@@ -4,12 +4,12 @@ open System
 open System.Collections.Generic
 open System.IO
 open System.Runtime.InteropServices
+open System.Threading
 open FSharp.Analyzers.SDK
 open FSharp.Analyzers.SDK.TASTCollecting
 open FSharp.Compiler.Text
 open FSharp.Compiler.CodeAnalysis
 open Ionide.ProjInfo
-open Ionide.ProjInfo.ProjectLoader
 open Ionide.ProjInfo.Types
 open Microsoft.Extensions.Logging.Abstractions
 open Microsoft.Extensions.Logging
@@ -62,7 +62,6 @@ module TestProject1 =
 
                     if name = "Microsoft.FSharp.Core.FSharpOption`1.Value" then
                         state.Add range
-
             }
 
         let sourceText = File.ReadAllText fileName |> SourceText.ofString
@@ -78,9 +77,9 @@ module TestProject1 =
         let checkProjectResults = fcs.ParseAndCheckProject(fsharpOptions) |> Async.RunSynchronously
 
         let ctx : CliContext =
-            Utils.typeCheckFile fcs logger fsharpOptions fileName (Utils.SourceOfSource.SourceText sourceText)
-            |> Result.map (Utils.createContext checkProjectResults fileName sourceText)
-            |> function | Ok x -> x | Error e -> failwithf "%+A" e
+            match Utils.typeCheckFile fcs logger fsharpOptions fileName (Utils.SourceOfSource.SourceText sourceText) with
+            | Error e -> failwithf "Typecheck failed: %+A" e
+            | Ok results -> Utils.createContext checkProjectResults fileName sourceText results
 
         match ctx.TypedTree with
         | None -> ()
